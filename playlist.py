@@ -69,15 +69,22 @@ def _normalize_date(date_str: str) -> str:
     return date_str
 
 
+def _artist_names(track: dict) -> list[str]:
+    return [a["name"] for a in track.get("artists", []) if a.get("name")]
+
+
 def sort_tracks(tracks: list[dict]) -> list[dict]:
-    artist_count: Counter[str] = Counter(
-        t["artists"][0]["name"] if t.get("artists") else "" for t in tracks
-    )
+    artist_count: Counter[str] = Counter()
+    for t in tracks:
+        for name in _artist_names(t):
+            artist_count[name] += 1
 
     def key(t: dict) -> tuple[int, str, str]:
-        artist = t["artists"][0]["name"] if t.get("artists") else ""
+        names = _artist_names(t)
+        # 複数アーティストの場合はカウントが最大のアーティストで代表
+        primary = max(names, key=lambda n: artist_count[n]) if names else ""
         date = _normalize_date(t.get("album", {}).get("release_date", "0000"))
-        return (-artist_count[artist], artist.lower(), date)
+        return (-artist_count[primary], primary.lower(), date)
 
     return sorted(tracks, key=key)
 
@@ -93,9 +100,10 @@ def analyze(tracks: list[dict], playlist_name: str) -> None:
     import matplotlib.ticker as ticker
 
     # --- データ集計 ---
-    artist_count: Counter[str] = Counter(
-        t["artists"][0]["name"] if t.get("artists") else "Unknown" for t in tracks
-    )
+    artist_count: Counter[str] = Counter()
+    for t in tracks:
+        for name in _artist_names(t) or ["Unknown"]:
+            artist_count[name] += 1
     years = [
         int(t["album"]["release_date"][:4])
         for t in tracks
