@@ -7,6 +7,7 @@ DEST_PLAYLIST_ID にまだ入っていない曲だけを追加する。
 毎日実行することで「過去に Top 50 入りしたことがある全曲」が DEST に蓄積されていく。
 """
 
+import argparse
 import os
 import sys
 from datetime import date
@@ -99,6 +100,16 @@ def add_new_tracks(sp: spotipy.Spotify, playlist_id: str, track_ids: list[str]) 
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser(
+        description=(
+            "Spotify Top 50 アーカイバ。\n"
+            "SOURCE_PLAYLIST_ID の現在の曲を取得し、DEST_PLAYLIST_ID に未追加の曲だけを追加する。\n"
+            f"設定ファイル: {CONFIG_PATH}"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.parse_args()
+
     load_dotenv(ENV_PATH)
     cfg = load_config(CONFIG_PATH)
     sp = build_spotify_client()

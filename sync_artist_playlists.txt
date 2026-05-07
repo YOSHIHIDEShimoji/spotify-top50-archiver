@@ -1,0 +1,13 @@
+# Sync config for sync_artist_playlists.py
+#
+# SOURCE_PLAYLIST_ID: 同期元プレイリスト
+# 以下の行: アーティスト名=同期先プレイリストID の形式で追加
+#
+# Spotify アプリ → プレイリスト右クリック → シェア → Spotify URI をコピー
+# 例: spotify:playlist:XXXXXXXXX → ID部分のみ貼る
+# アーティスト名はSpotify上の表記と完全一致（大文字小文字は不問）
+
+SOURCE_PLAYLIST_ID=3gWeVkYJPREpkdCpDRjHFw
+Charlie Puth=3sOTawp5o0fz1caiPR47aV
+OneRepublic=1PVdmHB8QhiTk22VKts2oA
+Taylor Swift=1wdKsBFbcyt2R9KVpDl0ti

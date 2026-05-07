@@ -1,0 +1,200 @@
+#!/usr/bin/env python3
+"""
+Spotify Artist Playlist Syncer
+
+sync_artist_playlists.txt に設定したソースプレイリストを走査し、
+各アーティストの曲をそれぞれのプレイリストへ追加する（重複なし）。
+AUTO_DETECT_THRESHOLD 曲以上持つ未設定アーティストは自動検出し、
+プレイリストを新規作成して設定ファイルに追記する。
+
+Usage:
+  python sync_artist_playlists.py
+"""
+
+import argparse
+import os
+import sys
+from collections import Counter
+from datetime import date
+from pathlib import Path
+
+import spotipy
+from dotenv import load_dotenv
+from spotipy.oauth2 import SpotifyOAuth
+
+BASE_DIR = Path(__file__).resolve().parent
+ENV_PATH = BASE_DIR / ".env"
+CONFIG_PATH = BASE_DIR / "sync_artist_playlists.txt"
+CACHE_PATH = BASE_DIR / ".cache-spotify"
+
+SCOPE = "playlist-modify-private playlist-modify-public playlist-read-private"
+
+ADD_BATCH_SIZE = 100
+AUTO_DETECT_THRESHOLD = 20
+
+
+def load_config(path: Path) -> tuple[str, dict[str, str]]:
+    source_id = ""
+    artists: dict[str, str] = {}  # {artist_name_lower: playlist_id}
+    with path.open() as f:
+        for raw in f:
+            line = raw.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, value = line.split("=", 1)
+            key, value = key.strip(), value.strip()
+            if key == "SOURCE_PLAYLIST_ID":
+                source_id = value
+            else:
+                artists[key.lower()] = value
+    if not source_id:
+        raise RuntimeError(f"SOURCE_PLAYLIST_ID が {path} に設定されていません")
+    return source_id, artists
+
+
+def build_spotify_client() -> spotipy.Spotify:
+    for key in ("SPOTIPY_CLIENT_ID", "SPOTIPY_CLIENT_SECRET", "SPOTIPY_REDIRECT_URI"):
+        if not os.getenv(key):
+            raise RuntimeError(f"{key} が .env に設定されていません")
+    return spotipy.Spotify(
+        auth_manager=SpotifyOAuth(
+            scope=SCOPE,
+            cache_path=str(CACHE_PATH),
+            open_browser=True,
+        )
+    )
+
+
+def get_all_tracks(sp: spotipy.Spotify, playlist_id: str) -> list[dict]:
+    tracks: list[dict] = []
+    results = sp.playlist_items(
+        playlist_id,
+        fields="items(track(id,name,artists(name))),next",
+        additional_types=("track",),
+        limit=100,
+    )
+    while results:
+        for item in results.get("items", []):
+            track = item.get("track")
+            if track and track.get("id"):
+                tracks.append(track)
+        results = sp.next(results) if results.get("next") else None
+    return tracks
+
+
+def get_dest_track_ids(sp: spotipy.Spotify, playlist_id: str) -> set[str]:
+    track_ids: set[str] = set()
+    results = sp.playlist_items(
+        playlist_id,
+        fields="items(track(id)),next",
+        additional_types=("track",),
+        limit=100,
+    )
+    while results:
+        for item in results.get("items", []):
+            track = item.get("track") or {}
+            tid = track.get("id")
+            if tid:
+                track_ids.add(tid)
+        results = sp.next(results) if results.get("next") else None
+    return track_ids
+
+
+def count_artists(tracks: list[dict]) -> dict[str, tuple[int, str]]:
+    """Returns {artist_name_lower: (count, spotify_name)}"""
+    counts: Counter[str] = Counter()
+    spotify_names: dict[str, str] = {}
+    for track in tracks:
+        for artist in track.get("artists", []):
+            name = artist.get("name", "")
+            if not name:
+                continue
+            lower = name.lower()
+            counts[lower] += 1
+            if lower not in spotify_names:
+                spotify_names[lower] = name
+    return {lower: (counts[lower], spotify_names[lower]) for lower in counts}
+
+
+def create_artist_playlist(sp: spotipy.Spotify, artist_name: str) -> str:
+    user_id = sp.me()["id"]
+    playlist = sp.user_playlist_create(user_id, artist_name, public=True)
+    return playlist["id"]
+
+
+def append_artist_to_config(path: Path, artist_name: str, playlist_id: str) -> None:
+    with path.open("a") as f:
+        f.write(f"{artist_name}={playlist_id}\n")
+
+
+def match_tracks_for_artist(tracks: list[dict], artist_lower: str) -> tuple[list[str], str]:
+    matched: list[str] = []
+    spotify_name = ""
+    for track in tracks:
+        for artist in track.get("artists", []):
+            name = artist.get("name", "")
+            if name.lower() == artist_lower:
+                if not spotify_name:
+                    spotify_name = name
+                matched.append(track["id"])
+                break
+    return matched, spotify_name
+
+
+def add_new_tracks(sp: spotipy.Spotify, playlist_id: str, track_ids: list[str]) -> None:
+    for i in range(0, len(track_ids), ADD_BATCH_SIZE):
+        sp.playlist_add_items(playlist_id, track_ids[i : i + ADD_BATCH_SIZE])
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        description=(
+            "Spotify アーティスト別プレイリスト同期ツール。\n"
+            f"{AUTO_DETECT_THRESHOLD}曲以上持つ未設定アーティストを自動検出し、"
+            "プレイリストを新規作成して同期する。\n"
+            f"設定ファイル: {CONFIG_PATH}"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.parse_args()
+
+    load_dotenv(ENV_PATH)
+    source_id, artists = load_config(CONFIG_PATH)
+    sp = build_spotify_client()
+
+    source_tracks = get_all_tracks(sp, source_id)
+    today = date.today().isoformat()
+
+    # 自動検出: threshold以上のアーティストを処理
+    artist_counts = count_artists(source_tracks)
+    for artist_lower, (count, spotify_name) in sorted(
+        artist_counts.items(), key=lambda x: -x[1][0]
+    ):
+        if count < AUTO_DETECT_THRESHOLD:
+            continue
+        if artist_lower in artists:
+            print(f"[auto] {spotify_name}: {count} tracks (already configured)", flush=True)
+        else:
+            playlist_id = create_artist_playlist(sp, spotify_name)
+            append_artist_to_config(CONFIG_PATH, spotify_name, playlist_id)
+            artists[artist_lower] = playlist_id
+            print(f"[auto] {spotify_name}: {count} tracks → created playlist {playlist_id}", flush=True)
+
+    # 同期
+    for artist_name_lower, dest_id in artists.items():
+        existing = get_dest_track_ids(sp, dest_id)
+        candidates, spotify_name = match_tracks_for_artist(source_tracks, artist_name_lower)
+        to_add = [tid for tid in candidates if tid not in existing]
+
+        if to_add:
+            add_new_tracks(sp, dest_id, to_add)
+
+        skipped = len(candidates) - len(to_add)
+        display_name = spotify_name or artist_name_lower
+        print(f"[{today}] {display_name}: added {len(to_add)} (skipped {skipped})", flush=True)
+
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
