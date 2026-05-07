@@ -19,7 +19,7 @@ from spotipy.oauth2 import SpotifyOAuth
 
 BASE_DIR = Path(__file__).resolve().parent
 ENV_PATH = BASE_DIR / ".env"
-CONFIG_PATH = BASE_DIR / "archive_playlists.txt"
+CONFIG_PATH = BASE_DIR / "archive.txt"
 CACHE_PATH = BASE_DIR / ".cache-spotify"
 
 SCOPE = "playlist-modify-private playlist-modify-public playlist-read-private"

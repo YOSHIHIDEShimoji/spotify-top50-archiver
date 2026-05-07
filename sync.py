@@ -2,13 +2,14 @@
 """
 Spotify Artist Playlist Syncer
 
-sync_artist_playlists.txt に設定したソースプレイリストを走査し、
+sync.txt に設定したソースプレイリストを走査し、
 各アーティストの曲をそれぞれのプレイリストへ追加する（重複なし）。
 AUTO_DETECT_THRESHOLD 曲以上持つ未設定アーティストは自動検出し、
 プレイリストを新規作成して設定ファイルに追記する。
+新規作成したプレイリストは sort.txt にも追記し、自動ソート対象に加える。
 
 Usage:
-  python sync_artist_playlists.py
+  python sync.py
 """
 
 import argparse
@@ -24,7 +25,8 @@ from spotipy.oauth2 import SpotifyOAuth
 
 BASE_DIR = Path(__file__).resolve().parent
 ENV_PATH = BASE_DIR / ".env"
-CONFIG_PATH = BASE_DIR / "sync_artist_playlists.txt"
+CONFIG_PATH = BASE_DIR / "sync.txt"
+SORT_CONFIG_PATH = BASE_DIR / "sort.txt"
 CACHE_PATH = BASE_DIR / ".cache-spotify"
 
 SCOPE = "playlist-modify-private playlist-modify-public playlist-read-private"
@@ -127,6 +129,11 @@ def append_artist_to_config(path: Path, artist_name: str, playlist_id: str) -> N
         f.write(f"{artist_name}={playlist_id}\n")
 
 
+def append_to_sort_list(path: Path, playlist_url: str) -> None:
+    with path.open("a") as f:
+        f.write(f"{playlist_url}\n")
+
+
 def match_tracks_for_artist(tracks: list[dict], artist_lower: str) -> tuple[list[str], str]:
     matched: list[str] = []
     spotify_name = ""
@@ -152,7 +159,8 @@ def main() -> int:
             "Spotify アーティスト別プレイリスト同期ツール。\n"
             f"{AUTO_DETECT_THRESHOLD}曲以上持つ未設定アーティストを自動検出し、"
             "プレイリストを新規作成して同期する。\n"
-            f"設定ファイル: {CONFIG_PATH}"
+            f"設定ファイル: {CONFIG_PATH}\n"
+            f"ソート対象: {SORT_CONFIG_PATH}"
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -177,6 +185,7 @@ def main() -> int:
         else:
             playlist_id = create_artist_playlist(sp, spotify_name)
             append_artist_to_config(CONFIG_PATH, spotify_name, playlist_id)
+            append_to_sort_list(SORT_CONFIG_PATH, f"https://open.spotify.com/playlist/{playlist_id}")
             artists[artist_lower] = playlist_id
             print(f"[auto] {spotify_name}: {count} tracks → created playlist {playlist_id}", flush=True)
 
