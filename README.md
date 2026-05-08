@@ -1,6 +1,6 @@
 # spotify-playlist-tools
 
-Spotify プレイリストを自動管理する3つのツール。
+Spotify プレイリストを自動管理する4つのツール。
 
 ---
 
@@ -8,6 +8,10 @@ Spotify プレイリストを自動管理する3つのツール。
 
 ```
 .
+├── inbox.py      # お気に入りの曲を邦楽/洋楽に振り分けて各プレイリストへ追加・削除
+├── inbox.sh      # inbox.py の自動実行ラッパー
+├── inbox.txt     # 振り分け設定（JAPANESE_DRIVE_ID + 邦楽アーティスト→プレイリストID）
+│
 ├── sort.py       # プレイリストのソート・分析
 ├── sort.sh       # sort.py の自動実行ラッパー
 ├── sort.txt      # ソート対象プレイリストURL一覧
@@ -21,6 +25,7 @@ Spotify プレイリストを自動管理する3つのツール。
 ├── sync.txt      # 同期設定（SOURCE プレイリストID + アーティスト→プレイリストID）
 │
 └── log/
+    ├── inbox.log
     ├── sort.log
     ├── archive.log
     └── sync.log
@@ -142,13 +147,49 @@ python sync.py
 
 ---
 
+## inbox.py — お気に入り振り分け
+
+お気に入りの曲をジャンル判定（Spotify ジャンル → 日本語文字フォールバック）で邦楽 / 洋楽に分類し、
+各プレイリストへ追加する。処理済みの曲はお気に入りから削除される。判定不能な曲はスキップして macOS 通知で報告される。
+
+- 邦楽 → Japanese Drive Songs + `inbox.txt` に登録したアーティスト別プレイリスト
+- 洋楽 → Western Musics for Drive + `sync.txt` に登録したアーティスト別プレイリスト
+
+sort は `sort.sh` の定期実行（12:00）に委ねるため、inbox.py 自体は行わない。
+
+### 設定
+
+`inbox.txt` に設定する。
+
+```
+JAPANESE_DRIVE_ID=<Japanese Drive Songs のプレイリストID>
+
+Novelbright=<プレイリストID>
+OFFICIAL HIGE DANDISM=<プレイリストID>
+# Spotify公式アーティスト名=プレイリストID の形式で追加
+```
+
+洋楽アーティスト別は `sync.txt` を共用する。
+
+### 実行
+
+```bash
+bash inbox.sh
+# または
+python inbox.py
+```
+
+---
+
 ## 自動実行（launchd）
 
 | launchd ラベル | スクリプト | スケジュール |
 |---|---|---|
+| `com.yoshihide.run_inbox` | `inbox.sh` | 毎日 12:00 |
 | `com.yoshihide.run_sync` | `sync.sh` | 毎日 12:00 |
 | `com.yoshihide.run_spotify_top50_archive` | `archive.sh` | 毎日 12:00 |
 
 `sync.sh` は内部で `sort.sh` を呼ぶため、sort の launchd 登録は不要。
+`inbox.sh` で追加したプレイリストのソートは `sort.sh` の定期実行が担う。
 
 ログは `log/` に記録される。OAuth トークンが失効した場合は macOS 通知で警告される。

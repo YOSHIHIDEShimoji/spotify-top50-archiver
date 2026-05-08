@@ -23,7 +23,6 @@ BASE_DIR = Path(__file__).resolve().parent
 ENV_PATH = BASE_DIR / ".env"
 INBOX_CONFIG_PATH = BASE_DIR / "inbox.txt"
 SYNC_CONFIG_PATH = BASE_DIR / "sync.txt"
-SORT_SCRIPT = BASE_DIR / "sort.py"
 CACHE_PATH = BASE_DIR / ".cache-spotify"
 NOTIFIER_APP = Path.home() / "Applications/Notifiers/spotify-playlist-tools.app"
 
@@ -42,7 +41,6 @@ JAPANESE_GENRES = {
 
 JP_CHAR_RE = re.compile(r"[぀-鿿]")
 ADD_BATCH_SIZE = 100
-PYTHON = sys.executable
 _name_cache: dict[str, str] = {}
 
 
@@ -178,14 +176,6 @@ def classify(sp: spotipy.Spotify, track: dict) -> str:
     return "unknown"
 
 
-def run_sort(playlist_id: str) -> None:
-    subprocess.run(
-        [PYTHON, str(SORT_SCRIPT), f"https://open.spotify.com/playlist/{playlist_id}"],
-        check=False,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
-
 
 def main() -> int:
     load_dotenv(ENV_PATH)
@@ -279,19 +269,6 @@ def main() -> int:
         print(f"\nスキップされた曲: {len(unknown_tracks)}曲")
         for t in unknown_tracks:
             print(f"    {t['name']} / {t['artist']}")
-
-    # sort 実行（洋楽のみ）
-    sort_targets: set[str] = set()
-    if western_ids:
-        sort_targets.add(WESTERN_DRIVE_ID)
-    for pid in artist_adds:
-        if pid not in jp_artists.values():
-            sort_targets.add(pid)
-    if sort_targets:
-        for pid in sort_targets:
-            run_sort(pid)
-        names = "\n".join(f"    {playlist_name(sp, pid)}" for pid in sort_targets)
-        print(f"\nsort done!\n{names}")
 
     # 通知（不明曲ありの場合のみ）
     if unknown_tracks:
