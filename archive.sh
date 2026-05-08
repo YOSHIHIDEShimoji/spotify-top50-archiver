@@ -4,6 +4,11 @@ mkdir -p log
 LOG=log/archive.log
 PYTHON=/Users/yoshihide/.pyenv/versions/spotify-playlist-tools-3.11.9/bin/python
 
+if ! nc -zw3 accounts.spotify.com 443 2>/dev/null; then
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] ネットワーク未接続のためスキップ" >> "$LOG"
+    exit 0
+fi
+
 NOTIFIER=~/Applications/Notifiers/spotify-playlist-tools.app
 notify() {
     open -W -n "$NOTIFIER" --args -title "$1" -message "$2"
