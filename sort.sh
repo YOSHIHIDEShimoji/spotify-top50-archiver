@@ -5,8 +5,9 @@ LOG=log/sort.log
 PYTHON=/Users/yoshihide/.pyenv/versions/spotify-playlist-tools-3.11.9/bin/python
 PLAYLISTS=sort.txt
 
+NOTIFIER=~/Applications/Notifiers/spotify-playlist-tools.app
 notify() {
-    osascript -e "display notification \"$2\" with title \"$1\" sound name \"Basso\""
+    open -W -n "$NOTIFIER" --args -title "$1" -message "$2"
 }
 
 errors=()

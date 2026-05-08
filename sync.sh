@@ -4,8 +4,9 @@ mkdir -p log
 LOG=log/sync.log
 PYTHON=/Users/yoshihide/.pyenv/versions/spotify-playlist-tools-3.11.9/bin/python
 
+NOTIFIER=~/Applications/Notifiers/spotify-playlist-tools.app
 notify() {
-    osascript -e "display notification \"$2\" with title \"$1\" sound name \"Basso\""
+    open -W -n "$NOTIFIER" --args -title "$1" -message "$2"
 }
 
 output=$("$PYTHON" sync.py 2>&1)
