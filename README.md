@@ -187,7 +187,7 @@ python inbox.py
 |---|---|---|
 | `com.yoshihide.run_inbox` | `inbox.sh` | 毎日 12:00 |
 | `com.yoshihide.run_sync` | `sync.sh` | 毎日 12:00 |
-| `com.yoshihide.run_spotify_top50_archive` | `archive.sh` | 毎日 12:00 |
+| `com.yoshihide.run_archive` | `archive.sh` | 毎日 12:00 |
 
 `sync.sh` は内部で `sort.sh` を呼ぶため、sort の launchd 登録は不要。
 `inbox.sh` で追加したプレイリストのソートは `sort.sh` の定期実行が担う。
