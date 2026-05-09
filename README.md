@@ -58,7 +58,10 @@ cp .env.example .env
 SPOTIPY_CLIENT_ID=your_client_id_here
 SPOTIPY_CLIENT_SECRET=your_client_secret_here
 SPOTIPY_REDIRECT_URI=http://127.0.0.1:8000/callback
+GEMINI_API_KEY=your_gemini_api_key_here  # オプション（inbox.py の Gemini フォールバック用）
 ```
+
+`GEMINI_API_KEY` は [Google AI Studio](https://aistudio.google.com/apikey) で取得できる（無料枠あり）。未設定の場合、Gemini フォールバックはスキップされ判定不能曲は `unknown` 扱いになる。
 
 初回実行時にブラウザが開き、OAuth 認証が走る。トークンは `.cache-spotify` にキャッシュされる。
 
@@ -149,8 +152,12 @@ python sync.py
 
 ## inbox.py — お気に入り振り分け
 
-お気に入りの曲をジャンル判定（Spotify ジャンル → 日本語文字フォールバック）で邦楽 / 洋楽に分類し、
-各プレイリストへ追加する。処理済みの曲はお気に入りから削除される。判定不能な曲はスキップして macOS 通知で報告される。
+お気に入りの曲を以下の順で邦楽 / 洋楽に分類し、各プレイリストへ追加する。
+処理済みの曲はお気に入りから削除される。判定不能な曲はスキップして macOS 通知で報告される。
+
+1. **Spotify ジャンル** — アーティストのジャンル情報が取得できた場合はそれで判定
+2. **日本語文字チェック** — 曲名・アーティスト名・アルバム名に日本語文字があれば邦楽
+3. **Gemini API** — 上記で判定できない場合（`GEMINI_API_KEY` 未設定時はスキップ）
 
 - 邦楽 → Japanese Drive Songs + `inbox.txt` に登録したアーティスト別プレイリスト
 - 洋楽 → Western Musics for Drive のみ（アーティスト別振り分けは sync.py が担う）

@@ -15,6 +15,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+from google import genai
 import spotipy
 from dotenv import load_dotenv
 from spotipy.oauth2 import SpotifyOAuth
@@ -136,6 +137,31 @@ def has_japanese_chars(text: str) -> bool:
     return bool(JP_CHAR_RE.search(text))
 
 
+def classify_with_gemini(artist_name: str, track_name: str) -> str:
+    """Gemini で邦楽/洋楽を判定。キー未設定や失敗時は 'unknown' を返す"""
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        return "unknown"
+    client = genai.Client(api_key=api_key)
+    prompt = (
+        f"Is the artist \"{artist_name}\" (song: \"{track_name}\") a Japanese artist or a Western/non-Japanese artist? "
+        "Reply with exactly one word: 'japanese' or 'western'."
+    )
+    try:
+        response = client.models.generate_content(
+            model="gemini-2.5-flash-lite",
+            contents=prompt,
+        )
+        result = response.text.strip().lower()
+        if "japanese" in result:
+            return "japanese"
+        if "western" in result:
+            return "western"
+    except Exception as e:
+        print(f"  [gemini error] {e}")
+    return "unknown"
+
+
 def classify(sp: spotipy.Spotify, track: dict) -> str:
     """'japanese' / 'western' / 'unknown' を返す"""
     artist = track["artists"][0]
@@ -158,7 +184,7 @@ def classify(sp: spotipy.Spotify, track: dict) -> str:
     if "japanese version" in track.get("name", "").lower():
         return "japanese"
 
-    return "unknown"
+    return classify_with_gemini(artist["name"], track.get("name", ""))
 
 
 
@@ -250,10 +276,10 @@ def main() -> int:
 
     # 通知（不明曲ありの場合のみ）
     if unknown_tracks:
-        skipped = "、".join(f"{t['name']} / {t['artist']}" for t in unknown_tracks)
+        skipped = "\n".join(f"  {t['name']} / {t['artist']}" for t in unknown_tracks)
         notify(
             "Spotify Inbox: 不明曲あり",
-            f"判定できなかった {len(unknown_tracks)}曲: {skipped}",
+            f"判定できなかった {len(unknown_tracks)}曲:\n{skipped}",
         )
 
     return 0
