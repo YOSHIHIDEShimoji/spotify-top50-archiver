@@ -153,7 +153,7 @@ python sync.py
 各プレイリストへ追加する。処理済みの曲はお気に入りから削除される。判定不能な曲はスキップして macOS 通知で報告される。
 
 - 邦楽 → Japanese Drive Songs + `inbox.txt` に登録したアーティスト別プレイリスト
-- 洋楽 → Western Musics for Drive + `sync.txt` に登録したアーティスト別プレイリスト
+- 洋楽 → Western Musics for Drive のみ（アーティスト別振り分けは sync.py が担う）
 
 sort は `sort.sh` の定期実行（12:00）に委ねるため、inbox.py 自体は行わない。
 
@@ -168,8 +168,6 @@ Novelbright=<プレイリストID>
 OFFICIAL HIGE DANDISM=<プレイリストID>
 # Spotify公式アーティスト名=プレイリストID の形式で追加
 ```
-
-洋楽アーティスト別は `sync.txt` を共用する。
 
 ### 実行
 
