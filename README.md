@@ -157,7 +157,7 @@ python sync.py
 
 1. **Spotify ジャンル** — アーティストのジャンル情報が取得できた場合はそれで判定
 2. **日本語文字チェック** — 曲名・アーティスト名・アルバム名に日本語文字があれば邦楽
-3. **Gemini API** — 上記で判定できない場合（`GEMINI_API_KEY` 未設定時はスキップ）
+3. **Gemini API** — 上記で判定できない場合（モデル: `gemini-2.5-flash-lite`、`GEMINI_API_KEY` 未設定時はスキップ）
 
 - 邦楽 → Japanese Drive Songs + `inbox.txt` に登録したアーティスト別プレイリスト
 - 洋楽 → Western Musics for Drive のみ（アーティスト別振り分けは sync.py が担う）
