@@ -22,7 +22,6 @@ from spotipy.oauth2 import SpotifyOAuth
 BASE_DIR = Path(__file__).resolve().parent
 ENV_PATH = BASE_DIR / ".env"
 INBOX_CONFIG_PATH = BASE_DIR / "inbox.txt"
-SYNC_CONFIG_PATH = BASE_DIR / "sync.txt"
 CACHE_PATH = BASE_DIR / ".cache-spotify"
 NOTIFIER_APP = Path.home() / "Applications/Notifiers/spotify-playlist-tools.app"
 
@@ -76,20 +75,6 @@ def load_inbox_config(path: Path) -> tuple[str, dict[str, str]]:
         raise RuntimeError(f"JAPANESE_DRIVE_ID が {path} に設定されていません")
     return japanese_drive_id, artists
 
-
-def load_sync_artists(path: Path) -> dict[str, str]:
-    artists: dict[str, str] = {}
-    with path.open() as f:
-        for raw in f:
-            line = raw.strip()
-            if not line or line.startswith("#") or "=" not in line:
-                continue
-            key, value = line.split("=", 1)
-            key, value = key.strip(), value.strip()
-            if key == "SOURCE_PLAYLIST_ID":
-                continue
-            artists[key.lower()] = value
-    return artists
 
 
 def build_client() -> spotipy.Spotify:
@@ -180,7 +165,6 @@ def classify(sp: spotipy.Spotify, track: dict) -> str:
 def main() -> int:
     load_dotenv(ENV_PATH)
     japanese_drive_id, jp_artists = load_inbox_config(INBOX_CONFIG_PATH)
-    western_artists = load_sync_artists(SYNC_CONFIG_PATH)
 
     sp = build_client()
     liked = get_liked_tracks(sp)
@@ -235,12 +219,6 @@ def main() -> int:
                 western_ids.append(tid)
                 existing_ids(WESTERN_DRIVE_ID).add(tid)
                 dest_names.append("Western Musics for Drive")
-            for w_key, w_pid in western_artists.items():
-                if any(a.lower() == w_key for a in all_artist_names):
-                    if tid not in existing_ids(w_pid):
-                        artist_adds.setdefault(w_pid, []).append(tid)
-                        existing_ids(w_pid).add(tid)
-                        dest_names.append(playlist_name(sp, w_pid))
             processed.append({"id": tid, "name": name, "artist": primary_artist, "dest_names": dest_names})
 
         else:
