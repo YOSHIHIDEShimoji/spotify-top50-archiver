@@ -2,7 +2,7 @@
 # 邦楽振り分け先と邦楽アーティスト別プレイリスト
 # アーティスト名はSpotify公式表記（大文字小文字は不問）
 
-JAPANESE_DRIVE_ID=1NMKQVChOdoOy1o6bLw564
+JAPANESE_MUSICS_ID=1NMKQVChOdoOy1o6bLw564
 
 Novelbright=7lX5F3GCBG3q8PtqofskDm
 OFFICIAL HIGE DANDISM=5q1ATD02XJRpMFVPAagfFP

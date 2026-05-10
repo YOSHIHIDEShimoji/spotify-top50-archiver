@@ -10,7 +10,7 @@ Spotify プレイリストを自動管理する4つのツール。
 .
 ├── inbox.py      # お気に入りの曲を邦楽/洋楽に振り分けて各プレイリストへ追加・削除
 ├── inbox.sh      # inbox.py の自動実行ラッパー
-├── inbox.txt     # 振り分け設定（JAPANESE_DRIVE_ID + 邦楽アーティスト→プレイリストID）
+├── inbox.txt     # 振り分け設定（JAPANESE_MUSICS_ID + 邦楽アーティスト→プレイリストID）
 │
 ├── sort.py       # プレイリストのソート・分析
 ├── sort.sh       # sort.py の自動実行ラッパー
@@ -159,17 +159,17 @@ python sync.py
 2. **日本語文字チェック** — 曲名・アーティスト名・アルバム名に日本語文字があれば邦楽
 3. **Gemini API** — 上記で判定できない場合（モデル: `gemini-2.5-flash-lite`、`GEMINI_API_KEY` 未設定時はスキップ）
 
-- 邦楽 → Japanese Drive Songs + `inbox.txt` に登録したアーティスト別プレイリスト
-- 洋楽 → Western Musics for Drive のみ（アーティスト別振り分けは sync.py が担う）
+- 邦楽 → Japanese Musics + `inbox.txt` に登録したアーティスト別プレイリスト
+- 洋楽 → Western Musics のみ（アーティスト別振り分けは sync.py が担う）
 
-sort は `sort.sh` の定期実行（12:00）に委ねるため、inbox.py 自体は行わない。
+sort は `sort.sh` の定期実行（0:00）に委ねるため、inbox.py 自体は行わない。
 
 ### 設定
 
 `inbox.txt` に設定する。
 
 ```
-JAPANESE_DRIVE_ID=<Japanese Drive Songs のプレイリストID>
+JAPANESE_MUSICS_ID=<Japanese Musics のプレイリストID>
 
 Novelbright=<プレイリストID>
 OFFICIAL HIGE DANDISM=<プレイリストID>
@@ -190,9 +190,9 @@ python inbox.py
 
 | launchd ラベル | スクリプト | スケジュール |
 |---|---|---|
-| `com.yoshihide.run_inbox` | `inbox.sh` | 毎日 12:00 |
-| `com.yoshihide.run_sync` | `sync.sh` | 毎日 12:00 |
-| `com.yoshihide.run_archive` | `archive.sh` | 毎日 12:00 |
+| `com.yoshihide.run_inbox` | `inbox.sh` | 毎日 0:00 |
+| `com.yoshihide.run_sync` | `sync.sh` | 毎日 0:00 |
+| `com.yoshihide.run_archive` | `archive.sh` | 毎日 0:00 |
 
 `sync.sh` は内部で `sort.sh` を呼ぶため、sort の launchd 登録は不要。
 `inbox.sh` で追加したプレイリストのソートは `sort.sh` の定期実行が担う。

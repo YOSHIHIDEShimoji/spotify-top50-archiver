@@ -26,7 +26,7 @@ INBOX_CONFIG_PATH = BASE_DIR / "inbox.txt"
 CACHE_PATH = BASE_DIR / ".cache-spotify"
 NOTIFIER_APP = Path.home() / "Applications/Notifiers/spotify-playlist-tools.app"
 
-WESTERN_DRIVE_ID = "3gWeVkYJPREpkdCpDRjHFw"
+WESTERN_MUSICS_ID = "3gWeVkYJPREpkdCpDRjHFw"
 
 SCOPE = (
     "playlist-modify-private playlist-modify-public playlist-read-private "
@@ -59,7 +59,7 @@ def playlist_name(sp: spotipy.Spotify, pid: str) -> str:
 
 
 def load_inbox_config(path: Path) -> tuple[str, dict[str, str]]:
-    japanese_drive_id = ""
+    japanese_musics_id = ""
     artists: dict[str, str] = {}
     with path.open() as f:
         for raw in f:
@@ -68,13 +68,13 @@ def load_inbox_config(path: Path) -> tuple[str, dict[str, str]]:
                 continue
             key, value = line.split("=", 1)
             key, value = key.strip(), value.strip()
-            if key == "JAPANESE_DRIVE_ID":
-                japanese_drive_id = value
+            if key == "JAPANESE_MUSICS_ID":
+                japanese_musics_id = value
             else:
                 artists[key.lower()] = value
-    if not japanese_drive_id:
-        raise RuntimeError(f"JAPANESE_DRIVE_ID が {path} に設定されていません")
-    return japanese_drive_id, artists
+    if not japanese_musics_id:
+        raise RuntimeError(f"JAPANESE_MUSICS_ID が {path} に設定されていません")
+    return japanese_musics_id, artists
 
 
 
@@ -190,7 +190,7 @@ def classify(sp: spotipy.Spotify, track: dict) -> str:
 
 def main() -> int:
     load_dotenv(ENV_PATH)
-    japanese_drive_id, jp_artists = load_inbox_config(INBOX_CONFIG_PATH)
+    japanese_musics_id, jp_artists = load_inbox_config(INBOX_CONFIG_PATH)
 
     sp = build_client()
     liked = get_liked_tracks(sp)
@@ -227,10 +227,10 @@ def main() -> int:
 
         if label == "japanese":
             dest_names: list[str] = []
-            if tid not in existing_ids(japanese_drive_id):
+            if tid not in existing_ids(japanese_musics_id):
                 jp_ids.append(tid)
-                existing_ids(japanese_drive_id).add(tid)
-                dest_names.append("Japanese Drive Songs")
+                existing_ids(japanese_musics_id).add(tid)
+                dest_names.append("Japanese Musics")
             for jp_key, jp_pid in jp_artists.items():
                 if any(a.lower() == jp_key for a in all_artist_names):
                     if tid not in existing_ids(jp_pid):
@@ -241,10 +241,10 @@ def main() -> int:
 
         elif label == "western":
             dest_names = []
-            if tid not in existing_ids(WESTERN_DRIVE_ID):
+            if tid not in existing_ids(WESTERN_MUSICS_ID):
                 western_ids.append(tid)
-                existing_ids(WESTERN_DRIVE_ID).add(tid)
-                dest_names.append("Western Musics for Drive")
+                existing_ids(WESTERN_MUSICS_ID).add(tid)
+                dest_names.append("Western Musics")
             processed.append({"id": tid, "name": name, "artist": primary_artist, "dest_names": dest_names})
 
         else:
@@ -252,9 +252,9 @@ def main() -> int:
 
     # プレイリストへ追加
     if jp_ids:
-        add_to_playlist(sp, japanese_drive_id, jp_ids)
+        add_to_playlist(sp, japanese_musics_id, jp_ids)
     if western_ids:
-        add_to_playlist(sp, WESTERN_DRIVE_ID, western_ids)
+        add_to_playlist(sp, WESTERN_MUSICS_ID, western_ids)
     for pid, tids in artist_adds.items():
         add_to_playlist(sp, pid, tids)
 
