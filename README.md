@@ -20,9 +20,10 @@ Spotify プレイリストを自動管理する4つのツール。
 ├── archive.sh    # archive.py の自動実行ラッパー
 ├── archive.txt   # アーカイブ設定（SOURCE / DEST プレイリストID）
 │
-├── sync.py       # アーティスト別プレイリストへ自動振り分け・同期
+├── sync.py       # アーティスト別プレイリストへ自動振り分け・双方向同期
 ├── sync.sh       # sync.py → sort.sh を順に実行するラッパー
 ├── sync.txt      # 同期設定（SOURCE プレイリストID + アーティスト→プレイリストID）
+├── sync_state.json  # sync.py が自動生成するスナップショット（双方向同期用・gitignore 済み）
 │
 └── log/
     ├── inbox.log
@@ -124,6 +125,9 @@ python archive.py
 ソースプレイリストを走査し、各アーティストの曲を個別プレイリストへ追加する（重複なし）。
 `AUTO_DETECT_THRESHOLD`（デフォルト: 20）曲以上持つ未設定アーティストは自動検出し、
 プレイリストを新規作成して `sync.txt` と `sort.txt` に自動追記する。
+
+**双方向同期**: アーティストプレイリストから曲を削除すると、次回 sync 実行時に Western Musics からも自動削除される。
+内部では `sync_state.json` に前回同期後のスナップショットを保存し、差分で削除を検出する（初回実行時は順方向のみ）。
 
 ### 設定
 
