@@ -13,6 +13,7 @@ Usage:
 """
 
 import argparse
+import json
 import os
 import sys
 from collections import Counter
@@ -32,7 +33,9 @@ CACHE_PATH = BASE_DIR / ".cache-spotify"
 SCOPE = "playlist-modify-private playlist-modify-public playlist-read-private"
 
 ADD_BATCH_SIZE = 100
+REMOVE_BATCH_SIZE = 100
 AUTO_DETECT_THRESHOLD = 20
+STATE_PATH = BASE_DIR / "sync_state.json"
 
 
 def load_config(path: Path) -> tuple[str, dict[str, str]]:
@@ -153,6 +156,25 @@ def add_new_tracks(sp: spotipy.Spotify, playlist_id: str, track_ids: list[str]) 
         sp.playlist_add_items(playlist_id, track_ids[i : i + ADD_BATCH_SIZE])
 
 
+def remove_tracks_from_playlist(sp: spotipy.Spotify, playlist_id: str, track_ids: list[str]) -> None:
+    uris = [f"spotify:track:{tid}" for tid in track_ids]
+    for i in range(0, len(uris), REMOVE_BATCH_SIZE):
+        sp.playlist_remove_all_occurrences_of_items(playlist_id, uris[i : i + REMOVE_BATCH_SIZE])
+
+
+def load_sync_state(path: Path) -> dict[str, set[str]]:
+    if not path.exists():
+        return {}
+    with path.open() as f:
+        raw: dict[str, list[str]] = json.load(f)
+    return {pid: set(ids) for pid, ids in raw.items()}
+
+
+def save_sync_state(path: Path, state: dict[str, set[str]]) -> None:
+    with path.open("w") as f:
+        json.dump({pid: sorted(ids) for pid, ids in state.items()}, f, indent=2)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description=(
@@ -172,6 +194,9 @@ def main() -> int:
 
     source_tracks = get_all_tracks(sp, source_id)
     today = date.today().isoformat()
+    prev_state = load_sync_state(STATE_PATH)
+    is_first_run = not prev_state
+    new_state: dict[str, set[str]] = {}
 
     # 自動検出: threshold以上のアーティストを処理
     artist_counts = count_artists(source_tracks)
@@ -191,17 +216,30 @@ def main() -> int:
 
     # 同期
     for artist_name_lower, dest_id in artists.items():
-        existing = get_dest_track_ids(sp, dest_id)
-        candidates, spotify_name = match_tracks_for_artist(source_tracks, artist_name_lower)
-        to_add = [tid for tid in candidates if tid not in existing]
+        current_ap_ids = get_dest_track_ids(sp, dest_id)
 
+        # 逆方向: AP から削除された曲を Western Musics からも削除
+        if not is_first_run and dest_id in prev_state:
+            deleted_from_ap = prev_state[dest_id] - current_ap_ids
+            if deleted_from_ap:
+                remove_tracks_from_playlist(sp, source_id, list(deleted_from_ap))
+                source_tracks = [t for t in source_tracks if t["id"] not in deleted_from_ap]
+                print(f"[{today}] {artist_name_lower}: removed {len(deleted_from_ap)} from Western Musics", flush=True)
+
+        # 順方向: Western Musics の新規曲を AP へ追加
+        candidates, spotify_name = match_tracks_for_artist(source_tracks, artist_name_lower)
+        to_add = [tid for tid in candidates if tid not in current_ap_ids]
         if to_add:
             add_new_tracks(sp, dest_id, to_add)
+            current_ap_ids.update(to_add)
 
         skipped = len(candidates) - len(to_add)
         display_name = spotify_name or artist_name_lower
         print(f"[{today}] {display_name}: added {len(to_add)} (skipped {skipped})", flush=True)
 
+        new_state[dest_id] = current_ap_ids
+
+    save_sync_state(STATE_PATH, new_state)
     return 0
 
 

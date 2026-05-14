@@ -1,5 +1,6 @@
 .env
 .cache-spotify
+sync_state.json
 *.log
 log/
 __pycache__/
